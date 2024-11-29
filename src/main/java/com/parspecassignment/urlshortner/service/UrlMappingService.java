@@ -19,10 +19,8 @@ public interface UrlMappingService {
 	              // if found and timestamp is not expired then it return 
 	              // otherwise it will not return nothing.
 	   UrlMappingBean getLongURLfromShortURL(String shortURL);
-	     
-	   
-//	   //after adding the long URL we will add the short URL which we have generated using UrlID.
-//	   UrlMappingBean addShortUrl(UrlMappingEntity entity);
+
+
 	   
 	    
 }

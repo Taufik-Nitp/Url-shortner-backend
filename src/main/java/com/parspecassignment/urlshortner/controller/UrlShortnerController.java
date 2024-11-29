@@ -36,7 +36,10 @@ public class UrlShortnerController {
 	public String getHome() {
 		return "String data from home controller.";
 	}
-
+  
+	
+	/// Function to check if the url is reachable or not i.e it is valid url or not by pinging the url.
+	// and waiting for 3 sec for HTTP_OK status.
 	public boolean isReachable(String url) {
 //		return true;
 
@@ -54,13 +57,13 @@ public class UrlShortnerController {
 	@RequestMapping(value = "/longtoshorturl", method = RequestMethod.POST)
 	public ResponseEntity<String> getShortUrlFromLongUrl(@RequestBody Map<String, Object> requestBody) {
 		String longURL = (String) requestBody.get("url");
-
+             // Checking whether the long URL provided is valid or not.
 		if (isReachable(longURL)) {
 			UrlMappingBean responseBean = urlMappingService.addLongURL(longURL);
 			return new ResponseEntity<String>("http://localhost:3000/" + responseBean.getShortUrl(),
 					HttpStatus.CREATED);
 		} else {
-
+           // if not valid then send HTTP status as 406  NOT_ACCEPTABLE.
 			return new ResponseEntity<String>("", HttpStatus.NOT_ACCEPTABLE);
 		}
 	}
@@ -69,12 +72,15 @@ public class UrlShortnerController {
 	public ResponseEntity<UrlMappingBean> getLongUrlfromShortUrl(@PathVariable String slug) {
 
 		UrlMappingBean responseBean = urlMappingService.getLongURLfromShortURL(slug);
-
+         
+//		 if the bean returned as null it means we have not entry  for this shorturl.
 		if (responseBean == null) {
 			return new ResponseEntity<UrlMappingBean>(responseBean, HttpStatus.NOT_FOUND);
 		} else if ("EXPIRED".equals(responseBean.getStatus())) {
+			 // we have entry corresponding to the sortURL but the status got expired.
 			return new ResponseEntity<UrlMappingBean>(responseBean, HttpStatus.OK);
 		}
+		// active short url.
 		return new ResponseEntity<UrlMappingBean>(responseBean, HttpStatus.OK);
 
 	}

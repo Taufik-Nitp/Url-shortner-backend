@@ -47,10 +47,13 @@ public class UrlShortnerController {
 			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 			connection.setRequestMethod("HEAD");
 			connection.setConnectTimeout(3000);
+			logger.info("returning true at check Reachability.......");
 			return connection.getResponseCode() == HttpURLConnection.HTTP_OK;
 		} catch (Exception e) {
+			logger.info("returning false at check Reachability.......");
 			return false;
 		}
+		
 
 	}
 
@@ -58,12 +61,14 @@ public class UrlShortnerController {
 	public ResponseEntity<String> getShortUrlFromLongUrl(@RequestBody Map<String, Object> requestBody) {
 		String longURL = (String) requestBody.get("url");
              // Checking whether the long URL provided is valid or not.
+		logger.info("Getting longURL as this:========>>>>> "+longURL);
 		if (isReachable(longURL)) {
 			UrlMappingBean responseBean = urlMappingService.addLongURL(longURL);
+			logger.info("Short URL recieved as:========>>>>> "+responseBean.getShortUrl());
 			return new ResponseEntity<String>("http://localhost:3000/" + responseBean.getShortUrl(),
 					HttpStatus.CREATED);
 		} else {
-           // if not valid then send HTTP status as 406  NOT_ACCEPTABLE.
+			// if not valid then send HTTP status as 406 NOT_ACCEPTABLE.
 			return new ResponseEntity<String>("", HttpStatus.NOT_ACCEPTABLE);
 		}
 	}

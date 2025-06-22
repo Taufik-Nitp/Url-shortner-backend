@@ -3,11 +3,29 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-deploy:
     name: build and deploy urlshortner
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: urlshortnerdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: checkout code
         uses: actions/checkout@v3
@@ -18,10 +36,26 @@ jobs:
           distribution: 'corretto'
           java-version: 17
 
+      - name: Wait for MySQL to be healthy
+        run: |
+            echo "Waiting for MySQL..."
+            while ! mysqladmin ping -h"127.0.0.1" --silent; do
+              sleep 1
+            done
+      - name: Set up MySQL client
+        run: sudo apt-get install -y mysql-client
+
+      - name: Run tests with Maven
+        env:
+            SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/urlshortnerdb
+            SPRING_DATASOURCE_USERNAME: testuser
+            SPRING_DATASOURCE_PASSWORD: testpass
+        run: mvn clean install
+
       - name: build the app
         run: |
           mvn clean
-          mvn -B package --file pom.xml
+          mvn install
       - name: build the docker image
         uses: docker/build-push-action@v4
         with:

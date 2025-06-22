@@ -15,10 +15,10 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: password
+          MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: urlshortnerdb
-          MYSQL_USER: root
-          MYSQL_PASSWORD: password
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
         ports:
           - 3306:3306
         options: >-
@@ -48,8 +48,8 @@ jobs:
       - name: Run tests with Maven
         env:
             SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/urlshortnerdb
-            SPRING_DATASOURCE_USERNAME: root
-            SPRING_DATASOURCE_PASSWORD: password
+            SPRING_DATASOURCE_USERNAME: testuser
+            SPRING_DATASOURCE_PASSWORD: testpass
         run: mvn clean install
 
       - name: build the app

@@ -4,10 +4,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Getter
-@Setter
+
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "users")
 public class User {

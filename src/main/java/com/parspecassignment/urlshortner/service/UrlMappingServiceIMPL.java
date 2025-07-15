@@ -18,6 +18,7 @@ import jakarta.transaction.Transactional;
 public class UrlMappingServiceIMPL implements UrlMappingService {
 	private final String str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	private static final Logger logger = LoggerFactory.getLogger(UrlMappingServiceIMPL.class);
+	private static final int EXPIRY_DURATION= 2;  // In minutes
 	@Autowired
 	UrlMappingEntity urlMappingEntity;
 
@@ -33,12 +34,9 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
          /// Here I am checking whether the entry exist or not in DB
 		// If the long URL exists, return the existing mapping 
 		if (existingEntity.isPresent()) {
-			
 			UrlMappingEntity urlMappingEntity = existingEntity.get();
-			
-//			 set timestamp of this url as current timestamp.		
+			//set timestamp of this url as current timestamp.
 			urlMappingEntity.setTimestamp(System.currentTimeMillis());
-			 
 			// and make the status active
 			urlMappingEntity.setStatus("ACTIVE");
 			
@@ -58,7 +56,7 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 		//after adding the long URL we will add the short URL which we have generated using UrlID of current entry insertion above.
 		String shortURL = getShortURL(urlMappingEntity.getUrlId());
 
-		logger.info("short url=======>>>>>>>>>>" + shortURL);
+		logger.info("short URL: " + shortURL);
          // Now updating the short URL in the DB.
 		urlMappingEntity.setShortUrl(shortURL);
 		urlMappingDAO.saveAndFlush(urlMappingEntity);
@@ -71,22 +69,18 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 		// TODO Auto-generated method stub
 
 		UrlMappingBean urlMappingBean = new UrlMappingBean();
-
 		Optional<UrlMappingEntity> existingEntity = urlMappingDAO.findByShortUrl(shortURL);
-        
 		 //Checking if the short url exist in db if it doesnt exist return null object
 		 // if exist then return the row as urlMappingBean.
 		if (existingEntity.isPresent()) {
 			// If the short URL exists, return the existing mapping
 			UrlMappingEntity urlMappingEntity = existingEntity.get();
-              
-			
 			// Checking the url is expired or not .
 			// here i have set the expiration time as 60 sec. 
 			
-			if ((System.currentTimeMillis() - urlMappingEntity.getTimestamp()) > 60000) {
+			if ((System.currentTimeMillis() - urlMappingEntity.getTimestamp()) > EXPIRY_DURATION*60*1000) {
 				urlMappingEntity.setStatus("EXPIRED");
-				logger.info("Expired:==========>>>>>>>>>>>>>>>>>>>>>>>>>" + urlMappingEntity.getLongUrl());
+				logger.info("URL {} got expired " ,urlMappingEntity.getLongUrl());
 				urlMappingDAO.save(urlMappingEntity);
 			}
 			else {
@@ -94,11 +88,9 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 				urlMappingEntity.setAccessCount(urlMappingEntity.getAccessCount() + 1);
 				urlMappingDAO.save(urlMappingEntity);
 			}
-
 			BeanUtils.copyProperties(urlMappingEntity, urlMappingBean);
 			return urlMappingBean;
 		}
-
 		return null;
 	}
 
@@ -113,11 +105,9 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 			shortUrl = shortUrl + str.charAt(ind);
 			urlId = urlId / 62;
 		}
-
 		while (shortUrl.length() < 7) {
 			shortUrl = shortUrl + "*"; /////// added the padding to make the short URL size equal to 7.
 		}
-
 		return shortUrl;
 	}
 

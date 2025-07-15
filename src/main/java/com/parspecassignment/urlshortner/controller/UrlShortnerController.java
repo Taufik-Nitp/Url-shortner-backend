@@ -2,6 +2,7 @@ package com.parspecassignment.urlshortner.controller;
 
 import java.util.Map;
 
+import org.apache.tomcat.util.json.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,7 @@ import com.parspecassignment.urlshortner.service.UrlMappingService;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-
+import java.net.InetAddress;
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
 public class UrlShortnerController {
@@ -41,35 +42,31 @@ public class UrlShortnerController {
 	/// Function to check if the url is reachable or not i.e it is valid url or not by pinging the url.
 	// and waiting for 3 sec for HTTP_OK status.
 	public boolean isReachable(String url) {
-//		return true;
-
 		try {
 			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 			connection.setRequestMethod("HEAD");
 			connection.setConnectTimeout(3000);
-			logger.info("returning true at check Reachability.......");
+			logger.info("Checking if URL {} is reachable",url);
 			return connection.getResponseCode() == HttpURLConnection.HTTP_OK;
 		} catch (Exception e) {
-			logger.info("returning false at check Reachability.......");
+			logger.info("Exception: " + e.getMessage());
 			return false;
 		}
-		
-
 	}
 
 	@RequestMapping(value = "/longtoshorturl", method = RequestMethod.POST)
 	public ResponseEntity<String> getShortUrlFromLongUrl(@RequestBody Map<String, Object> requestBody) {
 		String longURL = (String) requestBody.get("url");
-             // Checking whether the long URL provided is valid or not.
-		logger.info("Getting longURL as this:========>>>>> "+longURL);
+		// Checking whether the long URL provided is valid or not.
+		logger.info("Long URL: "+longURL);
 		if (isReachable(longURL)) {
 			UrlMappingBean responseBean = urlMappingService.addLongURL(longURL);
-			logger.info("Short URL recieved as:========>>>>> "+responseBean.getShortUrl());
+			logger.info("Short URL recieved: "+responseBean.getShortUrl());
 			return new ResponseEntity<String>("http://localhost:3000/" + responseBean.getShortUrl(),
 					HttpStatus.CREATED);
 		} else {
 			// if not valid then send HTTP status as 406 NOT_ACCEPTABLE.
-			return new ResponseEntity<String>("", HttpStatus.NOT_ACCEPTABLE);
+			return new ResponseEntity<String>("Error: Not reachable to ther url "+ longURL , HttpStatus.NOT_ACCEPTABLE);
 		}
 	}
 

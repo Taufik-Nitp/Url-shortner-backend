@@ -58,10 +58,14 @@ public class UrlShortnerController {
 	public ResponseEntity<String> getShortUrlFromLongUrl(@RequestBody Map<String, Object> requestBody) {
 		String longURL = (String) requestBody.get("url");
 		// Checking whether the long URL provided is valid or not.
-		logger.info("Long URL: "+longURL);
 		if (isReachable(longURL)) {
+			long startTime = System.currentTimeMillis();
+
 			UrlMappingBean responseBean = urlMappingService.addLongURL(longURL);
-			logger.info("Short URL recieved: "+responseBean.getShortUrl());
+			long endTime = System.currentTimeMillis();
+			long duration = endTime - startTime;
+
+			logger.info("Time taken by controller for URL  {}: " ,longURL + duration + " ms");
 			return new ResponseEntity<String>("http://localhost:3000/" + responseBean.getShortUrl(),
 					HttpStatus.CREATED);
 		} else {

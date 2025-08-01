@@ -2,6 +2,7 @@ package com.parspecassignment.urlshortner.service;
 
 import java.util.Optional;
 
+import com.parspecassignment.urlshortner.redis.RedisUrlService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -16,18 +17,33 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class UrlMappingServiceIMPL implements UrlMappingService {
+
 	private final String str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	private static final Logger logger = LoggerFactory.getLogger(UrlMappingServiceIMPL.class);
 	private static final int EXPIRY_DURATION= 2;  // In minutes
+
 	@Autowired
 	UrlMappingEntity urlMappingEntity;
 
 	@Autowired
 	UrlMappingDAO urlMappingDAO;
 
+	@Autowired
+	RedisUrlService redisUrlService;
+
+
 	@Override
 	public UrlMappingBean addLongURL(String longURL) {
 		// TODO Auto-generated method stub
+
+	      UrlMappingBean umb=  redisUrlService.getUrlMappingBeanFromLongUrlFromRedis(longURL);
+
+		if(umb!=null) {
+			 logger.info("Long URL from Redis: "+ umb);
+//			redisTemplate.expire(redisKey, Duration.ofHours(24));
+			return umb;
+		}
+
 		UrlMappingBean urlMappingBean = new UrlMappingBean();
 
 		Optional<UrlMappingEntity> existingEntity = urlMappingDAO.findByLongUrl(longURL);
@@ -42,6 +58,10 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 			
 			urlMappingDAO.save(urlMappingEntity);
 			BeanUtils.copyProperties(urlMappingEntity, urlMappingBean);
+			logger.info("Saving in Redis,key as longURL {} with value as Bean: {} " ,longURL,urlMappingBean);
+			redisUrlService.saveLongUrlToRedis(longURL, urlMappingBean);
+			logger.info("Saving in Redis key as shortURL {} with value as Bean: {} " ,urlMappingEntity.getShortUrl(),urlMappingBean);
+			redisUrlService.saveShortUrlToRedis(urlMappingEntity.getShortUrl(), urlMappingBean);
 			return urlMappingBean;
 		}
 
@@ -55,19 +75,26 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 		urlMappingDAO.save(urlMappingEntity);
 		//after adding the long URL we will add the short URL which we have generated using UrlID of current entry insertion above.
 		String shortURL = getShortURL(urlMappingEntity.getUrlId());
-
-		logger.info("short URL: " + shortURL);
          // Now updating the short URL in the DB.
 		urlMappingEntity.setShortUrl(shortURL);
 		urlMappingDAO.saveAndFlush(urlMappingEntity);
 		BeanUtils.copyProperties(urlMappingEntity, urlMappingBean);
+		logger.info("Saving in Redis,key as longURL {} with value as Bean: {} " ,longURL,urlMappingBean);
+		redisUrlService.saveLongUrlToRedis(longURL, urlMappingBean);
+		logger.info("Saving in Redis key as shortURL {} with value as Bean: {} " ,shortURL,urlMappingBean);
+		redisUrlService.saveShortUrlToRedis(shortURL, urlMappingBean);
+
 		return urlMappingBean;
 	}
 
 	@Override
 	public UrlMappingBean getLongURLfromShortURL(String shortURL) {
 		// TODO Auto-generated method stub
-
+		 UrlMappingBean umb =  redisUrlService.getUrlMappingBeanFromShortURLFromRedis(shortURL);
+		 if(umb!=null) {
+			 logger.info("Long URL from Redis: "+ umb);
+			 return umb;
+		 }
 		UrlMappingBean urlMappingBean = new UrlMappingBean();
 		Optional<UrlMappingEntity> existingEntity = urlMappingDAO.findByShortUrl(shortURL);
 		 //Checking if the short url exist in db if it doesnt exist return null object
@@ -76,7 +103,6 @@ public class UrlMappingServiceIMPL implements UrlMappingService {
 			// If the short URL exists, return the existing mapping
 			UrlMappingEntity urlMappingEntity = existingEntity.get();
 			// Checking the url is expired or not .
-			// here i have set the expiration time as 60 sec. 
 			
 			if ((System.currentTimeMillis() - urlMappingEntity.getTimestamp()) > EXPIRY_DURATION*60*1000) {
 				urlMappingEntity.setStatus("EXPIRED");

@@ -1,20 +1,25 @@
 package com.parspecassignment.urlshortner.controller;
 
-
+import com.parspecassignment.urlshortner.bean.LoginResponseBean;
 import com.parspecassignment.urlshortner.dao.UserRepository;
 import com.parspecassignment.urlshortner.entity.User;
 import com.parspecassignment.urlshortner.security.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    Logger logger = LoggerFactory.getLogger(AuthController.class);
     @Autowired
     AuthenticationManager authenticationManager;
     @Autowired
@@ -24,7 +29,8 @@ public class AuthController {
     @Autowired
     JwtUtil jwtUtils;
     @PostMapping("/signin")
-    public String authenticateUser(@RequestBody User user) {
+    public ResponseEntity<LoginResponseBean> authenticateUser(@RequestBody User user) {
+        try{
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         user.getUsername(),
@@ -32,21 +38,38 @@ public class AuthController {
                 )
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        return jwtUtils.generateToken(userDetails.getUsername());
+            logger.info("User {} signed in successfully", user.getUsername());
+            return new ResponseEntity<>(new LoginResponseBean(jwtUtils.generateToken(userDetails.getUsername()),user.getUsername()), HttpStatus.OK);
+        }catch (Exception e){
+            logger.error("User Not found:"+e.getMessage());
+            return new ResponseEntity<>(new LoginResponseBean(),HttpStatus.UNAUTHORIZED);
+        }
     }
     @PostMapping("/signup")
-    public String registerUser(@RequestBody User user) {
-
-        if (userRepository.existsByUsername(user.getUsername())) {
-            return "Error: Username is already taken!";
+    public ResponseEntity<String> registerUser(@RequestBody User user) {
+        try {
+            if (userRepository.existsByUsername(user.getUsername())) {
+                logger.error("Username {} already exists", user.getUsername());
+                return new ResponseEntity<>("Username already exists", HttpStatus.CONFLICT);
+            }
+            // Create new user's account
+            User newUser = new User(
+                    null,
+                    user.getUsername(),
+                    encoder.encode(user.getPassword())
+            );
+            userRepository.save(newUser);
+            logger.info("User {} registered successfully", user.getUsername());
+            return new ResponseEntity<>(user.getUsername(), HttpStatus.CREATED);
+        } catch (DataAccessException dae) {
+            // Specific Spring exception for DB access errors
+            logger.error("Database error occurred while registering user {}: {}", user.getUsername(), dae.getMessage(), dae);
+            return new ResponseEntity<>("Database error. Please try again later.", HttpStatus.SERVICE_UNAVAILABLE);
+        } catch (Exception e) {
+            // Catch-all for unexpected issues
+            logger.error("Unexpected error occurred while registering user {}: {}", user.getUsername(), e.getMessage(), e);
+            return new ResponseEntity<>("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        // Create new user's account
-        User newUser = new User(
-                null,
-                user.getUsername(),
-                encoder.encode(user.getPassword())
-        );
-        userRepository.save(newUser);
-        return "User registered successfully!";
+
     }
 }

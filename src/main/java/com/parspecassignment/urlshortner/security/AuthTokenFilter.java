@@ -5,6 +5,8 @@ package com.parspecassignment.urlshortner.security;
 import com.parspecassignment.urlshortner.service.CustomUserDetailsService;
 import com.parspecassignment.urlshortner.service.UrlMappingServiceIMPL;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -56,9 +58,13 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
     private String parseJwt(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7);
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) { // replace "jwt" with your actual cookie name
+                    return cookie.getValue();
+                }
+            }
         }
         return null;
     }

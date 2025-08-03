@@ -4,6 +4,10 @@ import com.parspecassignment.urlshortner.bean.LoginResponseBean;
 import com.parspecassignment.urlshortner.dao.UserRepository;
 import com.parspecassignment.urlshortner.entity.User;
 import com.parspecassignment.urlshortner.security.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +33,7 @@ public class AuthController {
     @Autowired
     JwtUtil jwtUtils;
     @PostMapping("/signin")
-    public ResponseEntity<LoginResponseBean> authenticateUser(@RequestBody User user) {
+    public ResponseEntity<LoginResponseBean> authenticateUser(@RequestBody User user, HttpServletResponse response) {
         try{
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -39,7 +43,16 @@ public class AuthController {
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             logger.info("User {} signed in successfully", user.getUsername());
-            return new ResponseEntity<>(new LoginResponseBean(jwtUtils.generateToken(userDetails.getUsername()),user.getUsername()), HttpStatus.OK);
+            String token= jwtUtils.generateToken(userDetails.getUsername());
+            // Create HttpOnly cookie
+            Cookie cookie = new Cookie("jwt", token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true); // Set to true if using HTTPS
+            cookie.setPath("/");    // Cookie available to all endpoints
+            cookie.setMaxAge(24 * 60 * 60); // 1 day expiry (in seconds)
+
+            response.addCookie(cookie);
+            return new ResponseEntity<>(new LoginResponseBean(token,user.getUsername()), HttpStatus.OK);
         }catch (Exception e){
             logger.error("User Not found:"+e.getMessage());
             return new ResponseEntity<>(new LoginResponseBean(),HttpStatus.UNAUTHORIZED);

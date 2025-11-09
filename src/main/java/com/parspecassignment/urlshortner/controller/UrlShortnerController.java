@@ -2,6 +2,9 @@ package com.parspecassignment.urlshortner.controller;
 
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.tomcat.util.json.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,8 @@ import com.parspecassignment.urlshortner.service.UrlMappingService;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.InetAddress;
+
+
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
 public class UrlShortnerController {
@@ -54,6 +59,15 @@ public class UrlShortnerController {
 		}
 	}
 
+
+    @Operation(
+            summary = "Long to Short URL Conversion",
+            description = "This API takes the long URL in the request body and returns the corresponding short URL."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User created"),
+            @ApiResponse(responseCode = "400", description = "Validation error")
+    })
 	@RequestMapping(value = "/longtoshorturl", method = RequestMethod.POST)
 	public ResponseEntity<String> getShortUrlFromLongUrl(@RequestBody Map<String, Object> requestBody) {
 		String longURL = (String) requestBody.get("url");

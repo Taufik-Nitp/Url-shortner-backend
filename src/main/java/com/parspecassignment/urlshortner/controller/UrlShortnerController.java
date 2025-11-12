@@ -57,6 +57,8 @@ public class UrlShortnerController {
 			logger.info("Exception: " + e.getMessage());
 			return false;
 		}
+
+//        return true;
 	}
 
 

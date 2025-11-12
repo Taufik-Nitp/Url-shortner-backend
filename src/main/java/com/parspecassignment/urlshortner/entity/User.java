@@ -7,7 +7,10 @@ import lombok.*;
 
 @NoArgsConstructor
 @Entity
+@Data
+@AllArgsConstructor
 @Table(name = "users")
+@Builder
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,6 +18,8 @@ public class User {
     @Column(unique = true)
     private String username;
     private String password;
+    private String email;
+    private String picture;
 
     public String getUsername() {
         return username;

@@ -4,8 +4,7 @@ import com.parspecassignment.urlshortner.bean.LoginResponseBean;
 import com.parspecassignment.urlshortner.dao.UserRepository;
 import com.parspecassignment.urlshortner.entity.User;
 import com.parspecassignment.urlshortner.security.JwtUtil;
-
-import jakarta.servlet.http.HttpServletRequest;
+import com.parspecassignment.urlshortner.service.GoogleAuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -19,6 +18,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/auth")
@@ -32,6 +34,51 @@ public class AuthController {
     PasswordEncoder encoder;
     @Autowired
     JwtUtil jwtUtils;
+
+
+    @Autowired
+    private GoogleAuthService googleAuthService;
+
+
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponseBean> googleLogin(@RequestBody TokenRequest request,HttpServletResponse response) throws Exception {
+        GoogleIdToken.Payload payload = googleAuthService.verifyToken(request.getIdToken());
+
+        String email = payload.getEmail();
+        String name = (String) payload.get("name");
+        String picture = (String) payload.get("picture");
+
+        // Find or create user
+        User user = userRepository.findByEmail(email);
+             if(user == null){
+                    user = User.builder()
+                            .email(email)
+                            .username(email)
+                            .password("password")
+                            .picture(picture)
+                            .build();
+                    userRepository.save(user);
+             }
+
+        String token= jwtUtils.generateToken(user.getUsername());
+        // Create HttpOnly cookie
+        Cookie cookie = new Cookie("jwt", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true); // Set to true if using HTTPS
+        cookie.setPath("/");    // Cookie available to all endpoints
+        cookie.setMaxAge(24 * 60 * 60); // 1 day expiry (in seconds)
+        logger.info("User {} signed in successfully via Google", user.getUsername());
+        response.addCookie(cookie);
+        return new ResponseEntity<>(new LoginResponseBean(token,user.getUsername()), HttpStatus.OK);
+    }
+
+    public static class TokenRequest {
+        private String idToken;
+        public String getIdToken() { return idToken; }
+        public void setIdToken(String idToken) { this.idToken = idToken; }
+    }
+
+
     @PostMapping("/signin")
     public ResponseEntity<LoginResponseBean> authenticateUser(@RequestBody User user, HttpServletResponse response) {
         try{
